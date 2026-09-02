@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from datetime import date
 from pathlib import Path
 
@@ -8,12 +9,32 @@ from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
 
 from app.models.search import HotelSearch
+from app.providers.hotelrack_live import HotelrackLiveBrowser
 
 BASE_DIR = Path(__file__).resolve().parent
+
+hotelrack_browser = HotelrackLiveBrowser()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    try:
+        await hotelrack_browser.start()
+        app.state.hotelrack = hotelrack_browser
+    except Exception as error:
+        print(f"[Hotelrack] Browser failed to start: {error}")
+        app.state.hotelrack = None
+
+    yield
+
+    if app.state.hotelrack is not None:
+        await app.state.hotelrack.stop()
+
 
 app = FastAPI(
     title="Airwings Hotel Search",
     version="0.1.0",
+    lifespan=lifespan,
 )
 
 app.mount(
@@ -56,12 +77,10 @@ def search_hotels(
             children=children,
         )
     except ValidationError as error:
-        message = error.errors()[0]["msg"]
-
         return templates.TemplateResponse(
             request=request,
             name="index.html",
-            context={"error": message},
+            context={"error": error.errors()[0]["msg"]},
             status_code=422,
         )
 
@@ -70,6 +89,20 @@ def search_hotels(
         name="results.html",
         context={"search": search},
     )
+
+
+@app.get("/api/hotelrack/status")
+async def hotelrack_status(request: Request):
+    provider = request.app.state.hotelrack
+
+    if provider is None:
+        return {
+            "running": False,
+            "authenticated": False,
+            "message": "Hotelrack browser failed to start.",
+        }
+
+    return await provider.status()
 
 
 @app.get("/health")
