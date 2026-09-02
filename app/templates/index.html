@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Airwings Hotel Search</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+
+<body>
+    <main class="container">
+        <section class="search-card">
+            <div class="heading">
+                <p class="eyebrow">AIRWINGS TRAVEL</p>
+                <h1>Hotel Rate Search</h1>
+                <p>Search available hotel rooms and current selling rates.</p>
+            </div>
+
+            <form action="/search" method="post">
+                <div class="field-grid">
+                    <label>
+                        City
+                        <input
+                            type="text"
+                            name="city"
+                            value="Dubai"
+                            required
+                        >
+                    </label>
+
+                    <label>
+                        Hotel name
+                        <input
+                            type="text"
+                            name="hotel_name"
+                            placeholder="Optional"
+                        >
+                    </label>
+
+                    <label>
+                        Check-in
+                        <input type="date" name="check_in" required>
+                    </label>
+
+                    <label>
+                        Check-out
+                        <input type="date" name="check_out" required>
+                    </label>
+
+                    <label>
+                        Rooms
+                        <input
+                            type="number"
+                            name="rooms"
+                            value="1"
+                            min="1"
+                            max="10"
+                            required
+                        >
+                    </label>
+
+                    <label>
+                        Adults
+                        <input
+                            type="number"
+                            name="adults"
+                            value="2"
+                            min="1"
+                            max="20"
+                            required
+                        >
+                    </label>
+
+                    <label>
+                        Children
+                        <input
+                            type="number"
+                            name="children"
+                            value="0"
+                            min="0"
+                            max="10"
+                            required
+                        >
+                    </label>
+                </div>
+
+                <button type="submit">Search rates</button>
+            </form>
+        </section>
+    </main>
+
+    <script>
+        const checkIn = document.querySelector('[name="check_in"]');
+        const checkOut = document.querySelector('[name="check_out"]');
+        const today = new Date().toISOString().split("T")[0];
+
+        checkIn.min = today;
+        checkOut.min = today;
+
+        checkIn.addEventListener("change", () => {
+            checkOut.min = checkIn.value;
+
+            if (checkOut.value && checkOut.value <= checkIn.value) {
+                checkOut.value = "";
+            }
+        });
+    </script>
+</body>
+</html>
