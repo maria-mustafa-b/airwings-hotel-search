@@ -1,0 +1,33 @@
+# Credentials and configuration
+.env
+.env.*
+!.env.example
+secrets/
+
+# Authenticated browser data
+browser-data/
+playwright/.auth/
+storage-state.json
+
+# Captured Hotelrack information
+captures/
+network-logs/
+*.har
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Editors and operating systems
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
