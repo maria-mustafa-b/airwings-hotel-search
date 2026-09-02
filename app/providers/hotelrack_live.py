@@ -24,6 +24,7 @@ class HotelrackLiveBrowser:
         self.playwright: Playwright | None = None
         self.context: BrowserContext | None = None
         self.page: Page | None = None
+        self.search_page_url: str | None = None
         self.search_lock = asyncio.Lock()
 
     async def start(self) -> None:
@@ -54,6 +55,7 @@ class HotelrackLiveBrowser:
         search_field = self.page.locator("#txt_CitySearch")
 
         if await search_field.count() > 0 and await search_field.is_visible():
+            self.search_page_url = self.page.url
             print("[Hotelrack] Existing authenticated session is ready.")
             return
 
@@ -76,7 +78,7 @@ class HotelrackLiveBrowser:
                     state="visible",
                     timeout=60_000,
                 )
-
+                self.search_page_url = self.page.url
                 print("[Hotelrack] Automatic sign-in succeeded.")
                 return
 
@@ -130,15 +132,42 @@ class HotelrackLiveBrowser:
 
         async with self.search_lock:
             page = self.page
-
-            destination = hotel_name or city
-
             city_input = page.locator("#txt_CitySearch")
 
+            # After a previous search, Hotelrack remains on its results page.
+            # Return to the authenticated search form before starting again.
             if not await city_input.is_visible():
-                raise RuntimeError(
-                    "Hotelrack is not logged in or its search form is unavailable."
+                if self.search_page_url is None:
+                    raise RuntimeError(
+                        "The authenticated Hotelrack search URL is unavailable."
+                    )
+
+                print("[Hotelrack] Returning to the search form.")
+
+                await page.goto(
+                    self.search_page_url,
+                    wait_until="domcontentloaded",
+                    timeout=60_000,
                 )
+
+                city_input = page.locator("#txt_CitySearch")
+
+                await city_input.wait_for(
+                    state="visible",
+                    timeout=30_000,
+                )
+
+            # Remember the current session-specific search URL.
+            self.search_page_url = page.url
+
+            # Hotel name is optional, but city is always included.
+            destination = (
+                f"{hotel_name}, {city}"
+                if hotel_name
+                else city
+            )
+
+            print(f"[Hotelrack] Destination query: {destination}")
 
             # Dismiss a warning left by a previous failed search.
             warning_ok = page.locator("#HQ_ShowBTNOk")
@@ -151,8 +180,10 @@ class HotelrackLiveBrowser:
             await city_input.fill(destination)
 
             # Wait for Hotelrack's autocomplete results.
+            suggestion_text = hotel_name or city
+
             suggestion = page.locator(".area-sec").filter(
-                has_text=destination
+                has_text=suggestion_text
             ).first
 
             await suggestion.wait_for(
