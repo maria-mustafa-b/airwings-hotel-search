@@ -185,3 +185,65 @@ button:hover {
         height: 190px;
     }
 }
+
+.room-results {
+    display: grid;
+    gap: 16px;
+    margin: 28px 0;
+}
+
+.room-card {
+    display: flex;
+    justify-content: space-between;
+    gap: 25px;
+    padding: 22px;
+    border: 1px solid #e4e7ec;
+    border-radius: 12px;
+    background: #ffffff;
+}
+
+.room-card h2 {
+    margin: 0 0 12px;
+    font-size: 19px;
+}
+
+.room-price-section {
+    min-width: 160px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 10px;
+}
+
+.room-price {
+    color: #1769aa;
+    font-size: 22px;
+    white-space: nowrap;
+}
+
+.available,
+.refundable {
+    color: #16794b;
+    font-weight: 700;
+}
+
+.non-refundable {
+    color: #b42318;
+    font-weight: 700;
+}
+
+.offer {
+    color: #1769aa;
+    font-weight: 700;
+}
+
+@media (max-width: 650px) {
+    .room-card {
+        flex-direction: column;
+    }
+
+    .room-price-section {
+        align-items: flex-start;
+    }
+}

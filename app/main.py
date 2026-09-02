@@ -153,6 +153,51 @@ async def hotelrack_status(request: Request):
     return await provider.status()
 
 
+@app.post("/rooms")
+async def room_rates(
+    request: Request,
+    hotel_name: str = Form(...),
+):
+    provider = request.app.state.hotelrack
+
+    if provider is None:
+        return templates.TemplateResponse(
+            request=request,
+            name="index.html",
+            context={
+                "error": "The Hotelrack backend is unavailable."
+            },
+            status_code=503,
+        )
+
+    try:
+        rooms = await provider.get_room_rates(
+            hotel_name=hotel_name,
+        )
+    except Exception as error:
+        print(f"[Hotelrack] Room-rate retrieval failed: {error}")
+
+        return templates.TemplateResponse(
+            request=request,
+            name="index.html",
+            context={
+                "error": (
+                    "Room rates could not be retrieved. "
+                    "Please perform the hotel search again."
+                )
+            },
+            status_code=502,
+        )
+
+    return templates.TemplateResponse(
+        request=request,
+        name="rooms.html",
+        context={
+            "hotel_name": hotel_name,
+            "rooms": rooms,
+        },
+    )
+
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "healthy"}

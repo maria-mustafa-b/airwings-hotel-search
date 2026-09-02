@@ -67,6 +67,65 @@
                                             Availability not confirmed
                                         {% endif %}
                                     </p>
+                                    {% if hotels %}
+    <div class="hotel-results">
+        {% for hotel in hotels %}
+            <article class="hotel-card">
+                {% if hotel.image %}
+                    <img
+                        src="{{ hotel.image }}"
+                        alt="{{ hotel.hotel_name }}"
+                        class="hotel-image"
+                    >
+                {% endif %}
+
+                <div>
+                    <h2>{{ hotel.hotel_name }}</h2>
+
+                    <p>
+                        {{ hotel.location or hotel.address }}
+                    </p>
+
+                    <p>{{ hotel.stars }} star hotel</p>
+
+                    <strong class="hotel-price">
+                        {% if hotel.price_from %}
+                            From {{ hotel.currency }}
+                            {{ hotel.price_from }}
+                        {% else %}
+                            Price unavailable
+                        {% endif %}
+                    </strong>
+
+                    <p>
+                        {% if hotel.available %}
+                            Available
+                        {% else %}
+                            Availability not confirmed
+                        {% endif %}
+                    </p>
+
+                    <!-- Add the View Rooms form here -->
+                    <form action="/rooms" method="post">
+                        <input
+                            type="hidden"
+                            name="hotel_name"
+                            value="{{ hotel.hotel_name }}"
+                        >
+
+                        <button type="submit">
+                            View rooms
+                        </button>
+                    </form>
+                </div>
+            </article>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="notice">
+        No matching hotels were returned by Hotelrack.
+    </div>
+{% endif %}
                                 </div>
                             </article>
                         {% endfor %}

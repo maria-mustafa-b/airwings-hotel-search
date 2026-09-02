@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ hotel_name }} | Airwings</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+
+<body>
+    <main class="container">
+        <section class="search-card">
+            <p class="eyebrow">AIRWINGS TRAVEL</p>
+            <h1>{{ hotel_name }}</h1>
+            <p>Available room rates</p>
+
+            {% if rooms %}
+                <div class="room-results">
+                    {% for room in rooms %}
+                        <article class="room-card">
+                            <div>
+                                <h2>{{ room.room_name }}</h2>
+
+                                <p>
+                                    <strong>Meal:</strong>
+                                    {{ room.meal_plan }}
+                                </p>
+
+                                <p>
+                                    {% if room.refundable %}
+                                        <span class="refundable">
+                                            Refundable
+                                        </span>
+                                    {% else %}
+                                        <span class="non-refundable">
+                                            Non-refundable
+                                        </span>
+                                    {% endif %}
+                                </p>
+
+                                {% if room.offer %}
+                                    <p class="offer">
+                                        {{ room.offer }}
+                                    </p>
+                                {% endif %}
+
+                                {% if room.value_adds %}
+                                    <p>
+                                        <strong>Includes:</strong>
+                                        {{ room.value_adds }}
+                                    </p>
+                                {% endif %}
+                            </div>
+
+                            <div class="room-price-section">
+                                <span class="available">
+                                    {{ room.status }}
+                                </span>
+
+                                <strong class="room-price">
+                                    {{ room.currency }}
+                                    {{ room.final_price }}
+                                </strong>
+                            </div>
+                        </article>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="notice">
+                    No available room rates were returned.
+                </div>
+            {% endif %}
+
+            <a class="back-link" href="/">
+                ← New hotel search
+            </a>
+        </section>
+    </main>
+</body>
+</html>

@@ -385,6 +385,201 @@ class HotelrackLiveBrowser:
                 for item in raw_results
             ]
 
+    async def get_room_rates(
+        self,
+        hotel_name: str,
+    ) -> list[dict[str, Any]]:
+        if (
+            self.page is None
+            or self.page.is_closed()
+            or self.context is None
+        ):
+            raise RuntimeError("Hotelrack browser is unavailable.")
+
+        async with self.search_lock:
+            page = self.page
+
+            if "SearchResult" not in page.url:
+                raise RuntimeError(
+                    "Hotelrack is not currently displaying hotel results."
+                )
+
+            # Find the requested hotel and its associated Select control.
+            hotel_text = page.get_by_text(
+                hotel_name,
+                exact=True,
+            ).first
+
+            try:
+                await hotel_text.wait_for(
+                    state="visible",
+                    timeout=10_000,
+                )
+
+                hotel_card = hotel_text.locator(
+                    "xpath=ancestor::*"
+                    "[.//*[normalize-space(text())='Select']][1]"
+                )
+
+                select_control = hotel_card.get_by_text(
+                    "Select",
+                    exact=True,
+                ).first
+
+                if await select_control.count() == 0:
+                    select_control = page.get_by_text(
+                        "Select",
+                        exact=True,
+                    ).first
+
+            except Exception:
+                select_control = page.get_by_text(
+                    "Select",
+                    exact=True,
+                ).first
+
+            await select_control.wait_for(
+                state="visible",
+                timeout=15_000,
+            )
+
+            loop = asyncio.get_running_loop()
+            response_future = loop.create_future()
+
+            def capture_room_response(response):
+                if (
+                    "gethotelroomratesbyid" in response.url.lower()
+                    and not response_future.done()
+                ):
+                    response_future.set_result(response)
+
+            self.context.on("response", capture_room_response)
+
+            room_page = None
+
+            try:
+                print(
+                    f"[Hotelrack] Opening room rates for {hotel_name}."
+                )
+
+                async with self.context.expect_page(
+                    timeout=30_000
+                ) as popup_info:
+                    await select_control.click()
+
+                room_page = await popup_info.value
+
+                response = await asyncio.wait_for(
+                    response_future,
+                    timeout=180,
+                )
+
+                print(
+                    "[Hotelrack] GetHotelRoomRatesById captured."
+                )
+
+                payload = await response.json()
+
+                if isinstance(payload, str):
+                    payload = json.loads(payload)
+
+            finally:
+                self.context.remove_listener(
+                    "response",
+                    capture_room_response,
+                )
+
+            raw_rates: list[dict[str, Any]] = []
+
+            for hotel_group in payload.get("SearchResult", []):
+                for result in hotel_group.get("Results", []):
+                    for room_group in result.get("RRDetail", []):
+                        raw_rates.extend(
+                            room_group.get("RateDetail", [])
+                        )
+
+            currency = payload.get("Currency", "AED")
+            cheapest: dict[tuple[str, str, bool], dict[str, Any]] = {}
+
+            for rate in raw_rates:
+                available = bool(rate.get("IsAvailable"))
+                status = str(rate.get("status") or "").lower()
+
+                if not available and status != "available":
+                    continue
+
+                raw_sell_amount = rate.get("SellAmount")
+
+                try:
+                    sell_amount = Decimal(str(raw_sell_amount))
+                except (InvalidOperation, TypeError, ValueError):
+                    continue
+
+                room_name = (
+                    rate.get("MasterRoomCategories")
+                    or rate.get("RoomCategory")
+                    or "Room"
+                )
+
+                meal_plan = (
+                    rate.get("FixMealType")
+                    or rate.get("MealType")
+                    or "Not specified"
+                )
+
+                refundable = bool(rate.get("Refundable"))
+
+                # Equivalent room, meal and refundability options are grouped.
+                key = (
+                    " ".join(str(room_name).lower().split()),
+                    " ".join(str(meal_plan).lower().split()),
+                    refundable,
+                )
+
+                current = cheapest.get(key)
+
+                if (
+                    current is None
+                    or sell_amount < current["_sell_amount"]
+                ):
+                    cheapest[key] = {
+                        "_sell_amount": sell_amount,
+                        "room_name": room_name,
+                        "meal_plan": meal_plan,
+                        "refundable": refundable,
+                        "available": True,
+                        "status": rate.get("status") or "Available",
+                        "offer": rate.get("Offer") or None,
+                        "value_adds": rate.get("ValueAdds") or None,
+                        "deadline": rate.get("DeadLineDate") or None,
+                        "currency": currency,
+                        "final_price": (
+                            sell_amount
+                            + settings.airwings_markup_aed
+                        ),
+                    }
+
+            rooms = sorted(
+                cheapest.values(),
+                key=lambda room: room["_sell_amount"],
+            )
+
+            for room in rooms:
+                room["final_price"] = (
+                    f"{room['final_price']:.2f}"
+                )
+                del room["_sell_amount"]
+
+            print(
+                f"[Hotelrack] Returning {len(rooms)} "
+                "deduplicated room rate(s)."
+            )
+
+            if room_page is not None and not room_page.is_closed():
+                await room_page.close()
+
+            return rooms
+
     async def stop(self) -> None:
         if self.context is not None:
             await self.context.close()
