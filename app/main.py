@@ -56,7 +56,7 @@ def home(request: Request):
 
 
 @app.post("/search")
-def search_hotels(
+async def search_hotels(
     request: Request,
     city: str = Form(...),
     hotel_name: str = Form(""),
@@ -83,11 +83,59 @@ def search_hotels(
             context={"error": error.errors()[0]["msg"]},
             status_code=422,
         )
+    provider = request.app.state.hotelrack
+
+    if provider is None:
+        return templates.TemplateResponse(
+            request=request,
+            name="index.html",
+            context={
+                "error": "The Hotelrack backend browser is unavailable."
+            },
+            status_code=503,
+        )
+
+    if search.rooms != 1:
+        return templates.TemplateResponse(
+            request=request,
+            name="index.html",
+            context={
+                "error": "The current prototype supports one room per search."
+            },
+            status_code=422,
+        )
+
+    try:
+        hotels = await provider.search_hotels(
+            city=search.city,
+            hotel_name=search.hotel_name,
+            check_in=search.check_in,
+            check_out=search.check_out,
+            adults=search.adults,
+            children=search.children,
+        )
+    except Exception as error:
+        print(f"[Hotelrack] Search failed: {error}")
+
+        return templates.TemplateResponse(
+            request=request,
+            name="index.html",
+            context={
+                "error": (
+                    "Hotelrack search failed. Confirm that the administrator "
+                    "is logged in and try again."
+                )
+            },
+            status_code=502,
+        )
 
     return templates.TemplateResponse(
         request=request,
         name="results.html",
-        context={"search": search},
+        context={
+            "search": search,
+            "hotels": hotels,
+        },
     )
 
 
