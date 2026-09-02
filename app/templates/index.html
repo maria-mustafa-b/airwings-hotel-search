@@ -17,6 +17,9 @@
             </div>
 
             <form action="/search" method="post">
+                {% if error %}
+                    <div class="error-message">{{ error }}</div>
+                {% endif %}
                 <div class="field-grid">
                     <label>
                         City

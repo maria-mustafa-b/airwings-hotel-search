@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hotel Results | Airwings</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+
+<body>
+    <main class="container">
+        <section class="search-card">
+            <p class="eyebrow">AIRWINGS TRAVEL</p>
+            <h1>Search received</h1>
+
+            <div class="search-summary">
+                <p><strong>City:</strong> {{ search.city }}</p>
+
+                <p>
+                    <strong>Hotel:</strong>
+                    {{ search.hotel_name or "All hotels" }}
+                </p>
+
+                <p>
+                    <strong>Dates:</strong>
+                    {{ search.check_in }} to {{ search.check_out }}
+                </p>
+
+                <p>
+                    <strong>Guests:</strong>
+                    {{ search.adults }} adult(s),
+                    {{ search.children }} child(ren),
+                    {{ search.rooms }} room(s)
+                </p>
+            </div>
+
+            <div class="notice">
+                The search details were validated successfully. Hotelrack rate
+                retrieval will be connected in the next stage.
+            </div>
+
+            <a class="back-link" href="/">← Modify search</a>
+        </section>
+    </main>
+</body>
+</html>
