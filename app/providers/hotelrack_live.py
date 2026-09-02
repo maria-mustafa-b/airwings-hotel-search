@@ -4,6 +4,8 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
+from decimal import Decimal, InvalidOperation
+
 from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 
 from playwright.async_api import (
@@ -18,6 +20,16 @@ from app.settings import settings
 PROJECT_DIR = Path(__file__).resolve().parents[2]
 BROWSER_DATA_DIR = PROJECT_DIR / "browser-data" / "hotelrack"
 
+def calculate_airwings_price(raw_price: object) -> str | None:
+    if raw_price is None:
+        return None
+
+    try:
+        base_price = Decimal(str(raw_price))
+        final_price = base_price + settings.airwings_markup_aed
+        return f"{final_price:.2f}"
+    except (InvalidOperation, TypeError, ValueError):
+        return None
 
 class HotelrackLiveBrowser:
     def __init__(self) -> None:
@@ -366,7 +378,7 @@ class HotelrackLiveBrowser:
                     "location": item.get("Loc"),
                     "stars": item.get("Star"),
                     "image": item.get("Img"),
-                    "price_from": item.get("SCost"),
+                    "price_from": calculate_airwings_price(item.get("SCost")),
                     "currency": currency,
                     "available": bool(item.get("Avail")),
                 }

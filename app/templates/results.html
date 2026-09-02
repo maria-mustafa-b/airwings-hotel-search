@@ -53,8 +53,11 @@
                                     <p>{{ hotel.stars }} star hotel</p>
 
                                     <strong class="hotel-price">
-                                        From {{ hotel.currency }}
-                                        {{ hotel.price_from }}
+                                        {% if hotel.price_from %}
+                                            From {{ hotel.currency }} {{ hotel.price_from }}
+                                        {% else %}
+                                            Price unavailable
+                                        {% endif %}
                                     </strong>
 
                                     <p>
