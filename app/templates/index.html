@@ -317,6 +317,24 @@
             searchButton.textContent = "Search rates";
         });
 
+const navigationEntry =
+    performance.getEntriesByType("navigation")[0];
+
+if (
+    navigationEntry &&
+    navigationEntry.type === "reload"
+) {
+    fetch("/refresh-hotelrack", {
+        method: "POST",
+        credentials: "same-origin"
+    }).catch(error => {
+        console.error(
+            "Hotelrack refresh failed:",
+            error
+        );
+    });
+}
+
         renderChildAges();
     </script>
 </body>

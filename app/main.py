@@ -308,3 +308,19 @@ def health() -> dict[str, str]:
 @app.get("/favicon.ico", include_in_schema=False)
 def favicon() -> Response:
     return Response(status_code=204)
+
+@app.post("/refresh-hotelrack")
+async def refresh_hotelrack(request: Request):
+    provider = request.app.state.hotelrack
+
+    if provider is None:
+        return {
+            "ok": False,
+            "message": "Hotelrack browser is unavailable.",
+        }
+
+    refreshed = await provider.refresh_current_page()
+
+    return {
+        "ok": refreshed,
+    }
