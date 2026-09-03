@@ -31,6 +31,9 @@ def calculate_airwings_price(raw_price: object) -> str | None:
     except (InvalidOperation, TypeError, ValueError):
         return None
 
+class InvalidDestinationError(ValueError):
+    pass
+
 class HotelrackLiveBrowser:
     def __init__(self) -> None:
         self.playwright: Playwright | None = None
@@ -138,6 +141,7 @@ class HotelrackLiveBrowser:
         check_out: date,
         adults: int,
         children: int,
+        children_ages: list[int],
     ) -> list[dict[str, Any]]:
         if self.page is None or self.page.is_closed():
             raise RuntimeError("Hotelrack browser is not running.")
@@ -198,12 +202,41 @@ class HotelrackLiveBrowser:
                 has_text=suggestion_text
             ).first
 
-            await suggestion.wait_for(
-                state="visible",
-                timeout=15_000,
-            )
+            try:
+                await suggestion.wait_for(
+                    state="visible",
+                    timeout=12_000,
+                )
+            except PlaywrightTimeoutError as error:
+                await city_input.fill("")
+
+                raise InvalidDestinationError(
+                    "No matching Hotelrack destination was found. "
+                    "Check the hotel spelling and selected city."
+                ) from error
 
             await suggestion.click()
+
+            try:
+                await page.wait_for_function(
+                    """
+                    () => {
+                        const field =
+                            document.querySelector("#hdnCityId");
+
+                        return field &&
+                               field.value &&
+                               field.value !== "undefined" &&
+                               field.value !== "null";
+                    }
+                    """,
+                    timeout=10_000,
+                )
+            except PlaywrightTimeoutError as error:
+                raise InvalidDestinationError(
+                    "Hotelrack did not accept this hotel and city. "
+                    "Select a valid hotel/city combination."
+                ) from error
 
             # Hotelrack stores the selected destination in a hidden field.
             # Typing text alone does not populate this field.
@@ -252,6 +285,106 @@ class HotelrackLiveBrowser:
             )
 
             await children_select.dispatch_event("change")
+
+            if len(children_ages) != children:
+                raise ValueError(
+                    "An age is required for every child."
+                )
+
+            if children > 0:
+                print(
+                    f"[Hotelrack] Setting {children} child age(s)."
+                )
+
+                await page.wait_for_timeout(700)
+
+                age_label = page.get_by_text(
+                    "Children Age",
+                    exact=True,
+                ).first
+
+                try:
+                    await age_label.wait_for(
+                        state="visible",
+                        timeout=10_000,
+                    )
+                except PlaywrightTimeoutError as error:
+                    raise RuntimeError(
+                        "Hotelrack did not display its child-age fields."
+                    ) from error
+
+                container = age_label
+                age_selects = []
+
+                # Move upward until the container holding the generated
+                # child-age dropdowns is found.
+                for _ in range(5):
+                    container = container.locator("xpath=..")
+                    selects = container.locator("select")
+                    candidates = []
+
+                    for index in range(await selects.count()):
+                        candidate = selects.nth(index)
+                        candidate_id = (
+                            await candidate.get_attribute("id") or ""
+                        )
+
+                        if candidate_id in {
+                            "ddlAdult_1",
+                            "selectdrop",
+                            "ddlNoOfNts",
+                            "ddlCurrency",
+                            "ddlStar",
+                            "ddlAvailable",
+                            "ddlSortBy",
+                            "ddlAgMarkup",
+                        }:
+                            continue
+
+                        option_values = await candidate.locator(
+                            "option"
+                        ).evaluate_all(
+                            """
+                            options => options.map(
+                                option => option.value
+                            )
+                            """
+                        )
+
+                        if "1" in option_values and "17" in option_values:
+                            candidates.append(candidate)
+
+                    if len(candidates) >= children:
+                        age_selects = candidates[:children]
+                        break
+
+                if len(age_selects) != children:
+                    raise RuntimeError(
+                        "Hotelrack child-age dropdowns could not be identified."
+                    )
+
+                for index, age in enumerate(children_ages):
+                    await age_selects[index].select_option(
+                        str(age),
+                        force=True,
+                    )
+
+                    await age_selects[index].dispatch_event("change")
+
+                done_button = page.get_by_text(
+                    "Done",
+                    exact=True,
+                ).first
+
+                if (
+                    await done_button.count() > 0
+                    and await done_button.is_visible()
+                ):
+                    await done_button.click()
+
+                print(
+                    f"[Hotelrack] Child ages set: {children_ages}"
+                )
 
             print(
                 f"[Hotelrack] Guests set: "

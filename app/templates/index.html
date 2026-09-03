@@ -2,61 +2,113 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
     <title>Airwings Hotel Search</title>
-    <link rel="stylesheet" href="/static/css/style.css">
+
+    <link
+        rel="stylesheet"
+        href="/static/css/style.css"
+    >
+
+    <style>
+        .loading-overlay[hidden] {
+            display: none !important;
+        }
+    </style>
 </head>
 
 <body>
     <main class="container">
         <section class="search-card">
+
             <div class="top-actions">
-    <form action="/logout" method="post" class="logout-form">
-        <button type="submit">Log out</button>
-    </form>
-</div>
-<div class="heading">
-                <p class="eyebrow">AIRWINGS TRAVEL</p>
-                <h1>Hotel Rate Search</h1>
-                <p>Search available hotel rooms and current selling rates.</p>
+                <form
+                    action="/logout"
+                    method="post"
+                    class="logout-form"
+                >
+                    <button type="submit">Log out</button>
+                </form>
             </div>
 
-            <form action="/search" method="post">
+            <div class="heading">
+                <p class="eyebrow">AIRWINGS TRAVEL</p>
+
+                <h1>Hotel Rate Search</h1>
+
+                <p>
+                    Search available hotel rooms and current
+                    selling rates.
+                </p>
+            </div>
+
+            <form
+                action="/search"
+                method="post"
+                id="hotel-search-form"
+            >
                 {% if error %}
-                    <div class="error-message">{{ error }}</div>
+                    <div
+                        class="error-message"
+                        role="alert"
+                    >
+                        {{ error }}
+                    </div>
                 {% endif %}
+
                 <div class="field-grid">
                     <label>
                         City
+
                         <input
                             type="text"
                             name="city"
                             value="Dubai"
+                            placeholder="Enter city"
+                            autocomplete="off"
                             required
                         >
                     </label>
 
                     <label>
                         Hotel name
+
                         <input
                             type="text"
                             name="hotel_name"
                             placeholder="Optional"
+                            autocomplete="off"
                         >
                     </label>
 
                     <label>
                         Check-in
-                        <input type="date" name="check_in" required>
+
+                        <input
+                            type="date"
+                            name="check_in"
+                            required
+                        >
                     </label>
 
                     <label>
                         Check-out
-                        <input type="date" name="check_out" required>
+
+                        <input
+                            type="date"
+                            name="check_out"
+                            required
+                        >
                     </label>
 
                     <label>
                         Rooms
+
                         <input
                             type="number"
                             name="rooms"
@@ -69,6 +121,7 @@
 
                     <label>
                         Adults
+
                         <input
                             type="number"
                             name="adults"
@@ -81,37 +134,190 @@
 
                     <label>
                         Children
+
                         <input
                             type="number"
+                            id="children-count"
                             name="children"
                             value="0"
                             min="0"
-                            max="10"
+                            max="4"
                             required
                         >
                     </label>
+
+                    <div
+                        id="children-ages"
+                        class="children-ages"
+                    ></div>
                 </div>
 
-                <button type="submit">Search rates</button>
+                <button
+                    type="submit"
+                    id="search-button"
+                >
+                    Search rates
+                </button>
             </form>
         </section>
     </main>
 
+    <div
+        id="loading-overlay"
+        class="loading-overlay"
+        hidden
+        aria-live="polite"
+        aria-busy="true"
+    >
+        <div class="loading-box">
+            <div
+                class="spinner"
+                aria-hidden="true"
+            ></div>
+
+            <h2>Searching hotel rates</h2>
+
+            <p>
+                Hotelrack is checking availability and prices.
+                This may take a minute.
+            </p>
+        </div>
+    </div>
+
     <script>
-        const checkIn = document.querySelector('[name="check_in"]');
-        const checkOut = document.querySelector('[name="check_out"]');
-        const today = new Date().toISOString().split("T")[0];
+        const searchForm =
+            document.getElementById("hotel-search-form");
+
+        const searchButton =
+            document.getElementById("search-button");
+
+        const childrenCount =
+            document.getElementById("children-count");
+
+        const childrenAges =
+            document.getElementById("children-ages");
+
+        const loadingOverlay =
+            document.getElementById("loading-overlay");
+
+        const checkIn =
+            document.querySelector('[name="check_in"]');
+
+        const checkOut =
+            document.querySelector('[name="check_out"]');
+
+        function formatLocalDate(date) {
+            const year = date.getFullYear();
+
+            const month = String(
+                date.getMonth() + 1
+            ).padStart(2, "0");
+
+            const day = String(
+                date.getDate()
+            ).padStart(2, "0");
+
+            return `${year}-${month}-${day}`;
+        }
+
+        function getNextDate(dateValue) {
+            const date = new Date(`${dateValue}T00:00:00`);
+            date.setDate(date.getDate() + 1);
+
+            return formatLocalDate(date);
+        }
+
+        const today = formatLocalDate(new Date());
 
         checkIn.min = today;
         checkOut.min = today;
 
         checkIn.addEventListener("change", () => {
-            checkOut.min = checkIn.value;
+            if (!checkIn.value) {
+                checkOut.min = today;
+                return;
+            }
 
-            if (checkOut.value && checkOut.value <= checkIn.value) {
+            const nextDate = getNextDate(checkIn.value);
+            checkOut.min = nextDate;
+
+            if (
+                checkOut.value &&
+                checkOut.value < nextDate
+            ) {
                 checkOut.value = "";
             }
         });
+
+        function renderChildAges() {
+            const count = Number(
+                childrenCount.value || 0
+            );
+
+            childrenAges.innerHTML = "";
+
+            for (let index = 0; index < count; index++) {
+                const label =
+                    document.createElement("label");
+
+                label.textContent =
+                    `Child ${index + 1} age`;
+
+                const select =
+                    document.createElement("select");
+
+                select.name = "children_ages";
+                select.required = true;
+
+                const placeholder =
+                    document.createElement("option");
+
+                placeholder.value = "";
+                placeholder.textContent = "Select age";
+                placeholder.disabled = true;
+                placeholder.selected = true;
+
+                select.appendChild(placeholder);
+
+                for (let age = 1; age <= 17; age++) {
+                    const option =
+                        document.createElement("option");
+
+                    option.value = String(age);
+
+                    option.textContent =
+                        `${age} year${age === 1 ? "" : "s"}`;
+
+                    select.appendChild(option);
+                }
+
+                label.appendChild(select);
+                childrenAges.appendChild(label);
+            }
+        }
+
+        childrenCount.addEventListener(
+            "input",
+            renderChildAges
+        );
+
+        searchForm.addEventListener("submit", () => {
+            loadingOverlay.hidden = false;
+            searchButton.disabled = true;
+            searchButton.textContent = "Searching…";
+        });
+
+        /*
+         * Reset the loading screen if the user returns to this
+         * page using the browser's Back button.
+         */
+        window.addEventListener("pageshow", () => {
+            loadingOverlay.hidden = true;
+            searchButton.disabled = false;
+            searchButton.textContent = "Search rates";
+        });
+
+        renderChildAges();
     </script>
 </body>
 </html>

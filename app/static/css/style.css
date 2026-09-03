@@ -276,3 +276,79 @@ button:hover {
 .logout-form button:hover {
     background: #475467;
 }
+
+.children-ages {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 18px;
+}
+
+.children-ages:empty {
+    display: none;
+}
+
+.children-ages select {
+    width: 100%;
+    padding: 13px 14px;
+    border: 1px solid #d0d5dd;
+    border-radius: 9px;
+    background: white;
+    font-size: 15px;
+}
+
+.loading-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: grid;
+    place-items: center;
+    padding: 20px;
+    background: rgba(15, 23, 42, 0.72);
+    backdrop-filter: blur(3px);
+}
+
+.loading-overlay[hidden] {
+    display: none;
+}
+
+.loading-box {
+    width: min(420px, 100%);
+    padding: 34px;
+    border-radius: 16px;
+    background: white;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+}
+
+.loading-box h2 {
+    margin: 18px 0 8px;
+}
+
+.loading-box p {
+    margin: 0;
+    color: #667085;
+    line-height: 1.5;
+}
+
+.spinner {
+    width: 48px;
+    height: 48px;
+    margin: auto;
+    border: 5px solid #dbeafe;
+    border-top-color: #1769aa;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@media (max-width: 650px) {
+    .children-ages {
+        grid-template-columns: 1fr;
+    }
+}

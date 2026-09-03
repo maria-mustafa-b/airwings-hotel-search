@@ -16,7 +16,10 @@ from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
 
 from app.models.search import HotelSearch
-from app.providers.hotelrack_live import HotelrackLiveBrowser
+from app.providers.hotelrack_live import (
+    HotelrackLiveBrowser,
+    InvalidDestinationError,
+)
 from app.settings import settings
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -151,6 +154,7 @@ async def search_hotels(
     rooms: int = Form(...),
     adults: int = Form(...),
     children: int = Form(...),
+    children_ages: list[int] | None = Form(None),
 ):
     try:
         search = HotelSearch(
@@ -161,6 +165,7 @@ async def search_hotels(
             rooms=rooms,
             adults=adults,
             children=children,
+            children_ages=children_ages or [],
         )
     except ValidationError as error:
         return templates.TemplateResponse(
@@ -199,7 +204,17 @@ async def search_hotels(
             check_out=search.check_out,
             adults=search.adults,
             children=search.children,
+            children_ages=search.children_ages,
         )
+
+    except InvalidDestinationError as error:
+        return templates.TemplateResponse(
+            request=request,
+            name="index.html",
+            context={"error": str(error)},
+            status_code=422,
+        )
+
     except Exception as error:
         print(f"[Hotelrack] Search failed: {error}")
 
