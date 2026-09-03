@@ -1,3 +1,10 @@
+import traceback
+
+import secrets
+
+from starlette.middleware.sessions import SessionMiddleware
+from fastapi.responses import RedirectResponse
+
 from contextlib import asynccontextmanager
 from datetime import date
 from pathlib import Path
@@ -10,6 +17,7 @@ from pydantic import ValidationError
 
 from app.models.search import HotelSearch
 from app.providers.hotelrack_live import HotelrackLiveBrowser
+from app.settings import settings
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -37,6 +45,37 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+@app.middleware("http")
+async def require_airwings_login(request: Request, call_next):
+    public_paths = {
+        "/login",
+        "/health",
+        "/favicon.ico",
+    }
+
+    if (
+        request.url.path in public_paths
+        or request.url.path.startswith("/static/")
+    ):
+        return await call_next(request)
+
+    if not request.session.get("authenticated"):
+        return RedirectResponse(
+            url="/login",
+            status_code=303,
+        )
+
+    return await call_next(request)
+
+
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=settings.airwings_session_secret,
+    same_site="strict",
+    https_only=True,
+    max_age=8 * 60 * 60,
+)
+
 app.mount(
     "/static",
     StaticFiles(directory=BASE_DIR / "static"),
@@ -45,6 +84,53 @@ app.mount(
 
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
 
+@app.get("/login")
+def login_page(request: Request):
+    if request.session.get("authenticated"):
+        return RedirectResponse("/", status_code=303)
+
+    return templates.TemplateResponse(
+        request=request,
+        name="login.html",
+        context={"error": None},
+    )
+
+
+@app.post("/login")
+def login(
+    request: Request,
+    username: str = Form(...),
+    password: str = Form(...),
+):
+    username_valid = secrets.compare_digest(
+        username,
+        settings.airwings_username,
+    )
+
+    password_valid = secrets.compare_digest(
+        password,
+        settings.airwings_password,
+    )
+
+    if not username_valid or not password_valid:
+        return templates.TemplateResponse(
+            request=request,
+            name="login.html",
+            context={"error": "Invalid username or password."},
+            status_code=401,
+        )
+
+    request.session.clear()
+    request.session["authenticated"] = True
+    request.session["username"] = username
+
+    return RedirectResponse("/", status_code=303)
+
+
+@app.post("/logout")
+def logout(request: Request):
+    request.session.clear()
+    return RedirectResponse("/login", status_code=303)
 
 @app.get("/")
 def home(request: Request):
@@ -176,6 +262,7 @@ async def room_rates(
         )
     except Exception as error:
         print(f"[Hotelrack] Room-rate retrieval failed: {error}")
+        traceback.print_exc()
 
         return templates.TemplateResponse(
             request=request,

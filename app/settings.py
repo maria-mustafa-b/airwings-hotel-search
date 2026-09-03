@@ -11,6 +11,10 @@ class Settings(BaseSettings):
     hotelrack_start_url: str
     hotelrack_headless: bool = False
 
+    airwings_username: str
+    airwings_password: str
+    airwings_session_secret: str
+
     airwings_markup_aed: Decimal = Decimal("100.00")
 
     model_config = SettingsConfigDict(

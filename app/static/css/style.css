@@ -247,3 +247,32 @@ button:hover {
         align-items: flex-start;
     }
 }
+
+.login-card {
+    max-width: 480px;
+}
+
+.login-card form {
+    display: grid;
+    gap: 20px;
+}
+.top-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 12px;
+}
+
+.logout-form {
+    margin: 0;
+}
+
+.logout-form button {
+    width: auto;
+    margin: 0;
+    padding: 9px 16px;
+    background: #667085;
+}
+
+.logout-form button:hover {
+    background: #475467;
+}
